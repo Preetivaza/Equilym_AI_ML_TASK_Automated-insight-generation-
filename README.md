@@ -1,6 +1,6 @@
 from pathlib import Path
 
-readme = r"""# AutoInsight — Automated Insight Generation
+AutoInsight — Automated Insight Generation
 
 > **A configurable Python + Streamlit analytics engine that transforms district-level healthcare data into validated, explainable, severity-ranked insights.**
 
