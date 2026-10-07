@@ -1,0 +1,16 @@
+insight_id,type,indicator,entity,period,metric,prev_value,change,severity,explanation
+INS-0001,trend,anc_coverage,Ahmedabad,2026-08,69.0,85.0,-18.8,High,"anc_coverage in Ahmedabad dropped by 18.8% compared to the previous period (2026-07), exceeding the 10% significant-change threshold."
+INS-0002,trend,anc_coverage,Mehsana,2026-08,42.0,84.0,-50.0,High,"anc_coverage in Mehsana dropped by 50.0% compared to the previous period (2026-07), exceeding the 10% significant-change threshold."
+INS-0003,trend,high_risk_cases,Ahmedabad,2026-08,13.0,10.0,30.0,High,"high_risk_cases in Ahmedabad rose by 30.0% compared to the previous period (2026-07), exceeding the 10% significant-change threshold."
+INS-0004,trend,high_risk_cases,Mehsana,2026-08,28.0,11.0,154.5,High,"high_risk_cases in Mehsana rose by 154.5% compared to the previous period (2026-07), exceeding the 10% significant-change threshold."
+INS-0005,outlier,anc_coverage,Mehsana,2026-08,42.0,,-3.0,High,"Mehsana's anc_coverage of 42 is 3.0σ below the overall mean (78.3); flagged by IQR rule, review recommended."
+INS-0006,outlier,high_risk_cases,Mehsana,2026-08,28.0,,2.7,High,"Mehsana's high_risk_cases of 28 is 2.7σ above the overall mean (13.4); flagged by IQR rule, review recommended."
+INS-0007,threshold_breach,anc_coverage,Mehsana,2026-08,42.0,,-28.0,High,Mehsana's anc_coverage of 42 is below the minimum acceptable limit of 70.
+INS-0008,trend,high_risk_cases,Vadodara,2026-08,6.0,7.0,-14.3,Medium,"high_risk_cases in Vadodara dropped by 14.3% compared to the previous period (2026-07), exceeding the 10% significant-change threshold."
+INS-0009,outlier,immunization,Vadodara,2026-08,97.0,,2.0,Medium,"Vadodara's immunization of 97 is 2.0σ above the overall mean (91.6); flagged by IQR rule, review recommended."
+INS-0010,threshold_breach,high_risk_cases,Mehsana,2026-08,28.0,,8.0,Medium,Mehsana's high_risk_cases of 28 is at/above the maximum acceptable limit of 20.
+INS-0011,correlation,anc_coverage:high_risk_cases,ALL,2026-07..2026-08,-0.93,,-0.93,Medium,anc_coverage and high_risk_cases show a negative correlation (r=-0.93) across 12 observations; interpret cautiously (small sample).
+INS-0012,correlation,institutional_delivery:immunization,ALL,2026-07..2026-08,0.98,,0.98,Medium,institutional_delivery and immunization show a positive correlation (r=0.98) across 12 observations; interpret cautiously (small sample).
+INS-0013,trend,high_risk_cases,Bhavnagar,2026-08,15.0,17.0,-11.8,Low,"high_risk_cases in Bhavnagar dropped by 11.8% compared to the previous period (2026-07), exceeding the 10% significant-change threshold."
+INS-0014,outlier,anc_coverage,Ahmedabad,2026-08,69.0,,-0.8,Low,"Ahmedabad's anc_coverage of 69 is 0.8σ below the overall mean (78.3); flagged by IQR rule, review recommended."
+INS-0015,threshold_breach,anc_coverage,Ahmedabad,2026-08,69.0,,-1.0,Low,Ahmedabad's anc_coverage of 69 is below the minimum acceptable limit of 70.
