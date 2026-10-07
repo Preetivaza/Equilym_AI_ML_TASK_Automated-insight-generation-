@@ -1,341 +1,112 @@
-# AutoInsight — Automated Insight Generation Engine
+from pathlib import Path
 
-> **A configurable Python + Streamlit analytics engine that validates district-level healthcare data, detects statistically meaningful patterns, and converts them into explainable, severity-ranked insights.**
+readme = r"""# AutoInsight — Automated Insight Generation
 
-[![Python](https://img.shields.io/badge/Python-3.x-blue?logo=python)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.50%2B-red?logo=streamlit)](https://streamlit.io/)
-[![Pandas](https://img.shields.io/badge/Pandas-Data%20Analysis-150458?logo=pandas)](https://pandas.pydata.org/)
-[![Plotly](https://img.shields.io/badge/Plotly-Visualization-3F4F75?logo=plotly)](https://plotly.com/python/)
-[![Tests](https://img.shields.io/badge/Tests-46-lightgrey)](#testing)
+> **A configurable Python + Streamlit analytics engine that transforms district-level healthcare data into validated, explainable, severity-ranked insights.**
 
----
-
-## 1. What is this project?
-
-**AutoInsight** is an automated analytics and insight-generation system for district-level healthcare data.
-
-Instead of manually inspecting a CSV and looking for changes, anomalies, or relationships, the application performs the analysis automatically:
-
-```text
-CSV Dataset
-    ↓
-Safe Loading
-    ↓
-Data Validation & Cleaning
-    ↓
-┌──────────────────────────────────────────────┐
-│ Trend Detection                              │
-│ Outlier Detection                            │
-│ Pearson Correlation                          │
-│ Optional Threshold-Breach Detection          │
-└──────────────────────────────────────────────┘
-    ↓
-Severity Classification
-    ↓
-Human-Readable Insight Generation
-    ↓
-Streamlit Dashboard
-    ↓
-CSV / JSON / Correlation Matrix Exports
-```
-
-The system is **data-driven**: district names, indicator values, periods, changes, correlations, and insight counts are generated from the uploaded dataset rather than being hardcoded.
+[![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.50%2B-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![Pandas](https://img.shields.io/badge/Pandas-Data%20Analysis-150458?logo=pandas&logoColor=white)](https://pandas.pydata.org/)
+[![Plotly](https://img.shields.io/badge/Plotly-Interactive%20Charts-3F4F75?logo=plotly&logoColor=white)](https://plotly.com/python/)
+[![Tests](https://img.shields.io/badge/Tests-46-success)](#testing)
 
 ---
 
-## 2. Main objectives
+## 📌 What is AutoInsight?
 
-The project is designed to:
+**AutoInsight** is an automated data-analysis and insight-generation application.
 
-- validate incoming CSV data safely;
-- clean unusable or invalid records without crashing the application;
-- identify significant month-to-month changes;
-- detect statistical outliers;
-- discover strong relationships between indicators;
-- optionally detect values outside user-defined absolute limits;
-- assign **Low / Medium / High** severity to findings;
-- generate readable explanations containing the actual observed values;
-- present results through an interactive Streamlit dashboard;
-- export the generated insights for further use.
+It accepts a CSV containing monthly district-level indicators, validates the data, performs multiple analytical checks, and converts the findings into human-readable insights.
 
----
+Instead of manually inspecting rows and charts, a user can upload a dataset and immediately answer questions such as:
 
-## 3. Key features
+- Which indicators changed significantly?
+- Which districts contain unusual values?
+- Which indicators have strong relationships?
+- Which findings deserve the highest attention?
+- Are there data-quality problems before analysis?
+- Can the findings be exported for reporting?
 
-### Data validation
-
-The validation layer checks:
-
-- empty datasets;
-- required columns;
-- missing values;
-- valid dates/months;
-- numeric indicator columns;
-- negative/infinite values;
-- values above 100 for percentage-style indicators;
-- exact duplicate rows;
-- duplicate `(district, month)` keys;
-- minimum district/month coverage.
-
-Invalid rows/values are handled and reported rather than causing an uncontrolled application crash.
-
-### Trend detection
-
-For each district and numeric indicator, the engine compares the current observation with the previous observed period:
+### Core pipeline
 
 ```text
-percentage change = (current - previous) / previous × 100
-```
-
-A trend becomes significant when:
-
-```text
-|percentage change| >= configured trend threshold
-```
-
-Default threshold: **10%**.
-
-The engine also handles:
-
-- first observations with no previous value;
-- missing values;
-- previous value equal to zero;
-- non-consecutive months.
-
-### Outlier detection
-
-Two methods are supported.
-
-#### IQR method
-
-```text
-IQR = Q3 - Q1
-
-Lower fence = Q1 - k × IQR
-Upper fence = Q3 + k × IQR
-```
-
-A value is an outlier when it lies outside the corresponding fence.
-
-Default:
-
-```text
-k = 1.5
-```
-
-#### Z-score method
-
-```text
-z = (x - mean) / standard deviation
-```
-
-A value is flagged when:
-
-```text
-|z| >= configured z-score threshold
-```
-
-Default threshold: **3.0**.
-
-### Pearson correlation
-
-The engine calculates a Pearson correlation matrix across numeric indicators and reports each unordered pair only once.
-
-A pair is flagged when:
-
-```text
-|r| >= configured correlation threshold
-```
-
-Default threshold: **0.70**.
-
-The generated insight explicitly states:
-
-> Correlation does not imply causation.
-
-The system also warns when the number of districts is below the recommended minimum for stable correlation estimates.
-
-### Optional threshold-breach detection
-
-The dashboard can additionally flag absolute threshold violations defined by the user.
-
-For percentage-style indicators:
-
-```text
-value < configured minimum
-```
-
-For count-style indicators:
-
-```text
-value >= configured maximum
-```
-
-This is intentionally separate from the statistical trend/outlier/correlation analysis.
-
-### Severity classification
-
-Findings are classified as:
-
-- **Low**
-- **Medium**
-- **High**
-
-Severity is based on how strongly the observed result exceeds its configured detection threshold rather than using one hardcoded cutoff for every analysis type.
-
-The dashboard allows the severity cut-offs to be configured.
-
-### Automated explanations
-
-Every generated insight contains:
-
-- unique insight ID;
-- analysis type;
-- indicator;
-- district/entity;
-- period;
-- observed value;
-- comparison/baseline value when applicable;
-- percentage change when applicable;
-- severity;
-- human-readable explanation.
-
-Example structure:
-
-```text
-INS-0001
-Type: trend
-Severity: High
-Indicator: ANC Coverage
-District: Mehsana
-Period: Aug 2026
-
-ANC Coverage in Mehsana decreased by 18.8% in Aug 2026
-compared with the previous month (85% → 69%), exceeding
-the 10% significant-change threshold.
+                    CSV / Uploaded Dataset
+                              │
+                              ▼
+                     ┌─────────────────┐
+                     │  Safe Loading   │
+                     └────────┬────────┘
+                              ▼
+                     ┌─────────────────┐
+                     │ Data Validation │
+                     │ + Cleaning      │
+                     └────────┬────────┘
+                              ▼
+             ┌─────────────────────────────────┐
+             │       Analytics Engine         │
+             │                                 │
+             │  • Trend Detection             │
+             │  • Outlier Detection           │
+             │  • Pearson Correlation         │
+             │  • Threshold Breaches           │
+             └────────────────┬────────────────┘
+                              ▼
+                     ┌─────────────────┐
+                     │ Severity Engine │
+                     └────────┬────────┘
+                              ▼
+                     ┌─────────────────┐
+                     │ Insight Builder │
+                     └────────┬────────┘
+                              ▼
+                  ┌───────────────────────┐
+                  │ Streamlit Dashboard  │
+                  │ + Filters + Charts   │
+                  └───────────┬───────────┘
+                              ▼
+                     CSV / JSON / Reports
 ```
 
 ---
 
-## 4. Architecture
+# ✨ Key Features
 
-The project follows a separation-of-concerns design:
-
-```text
-                    ┌──────────────────┐
-                    │   Streamlit UI   │
-                    │     app.py       │
-                    └────────┬─────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │   Data Loader    │
-                    │ data_loader.py   │
-                    └────────┬─────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │   Validation     │
-                    │ validation.py    │
-                    └────────┬─────────┘
-                             │ clean DataFrame
-                             ▼
-              ┌──────────────────────────────┐
-              │      Insight Generator      │
-              │   insight_generator.py      │
-              └──────────────┬───────────────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        ▼                    ▼                    ▼
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│    Trends    │     │   Outliers   │     │ Correlation  │
-│ trend_       │     │ outlier_     │     │ correlation  │
-│ detection.py │     │ detection.py │     │ .py          │
-└──────────────┘     └──────────────┘     └──────────────┘
-        │                    │                    │
-        └────────────────────┼────────────────────┘
-                             ▼
-                    ┌──────────────────┐
-                    │ Severity Engine  │
-                    │   severity.py    │
-                    └────────┬─────────┘
-                             ▼
-                    ┌──────────────────┐
-                    │ Insight Results  │
-                    └────────┬─────────┘
-                             ▼
-                    ┌──────────────────┐
-                    │ Dashboard/Export │
-                    └──────────────────┘
-```
-
-### Important architectural rule
-
-`src/` contains the analytics/business logic and does **not** depend on Streamlit.
-
-This makes the analysis engine reusable from:
-
-- the Streamlit application;
-- the headless export script;
-- automated tests;
-- future APIs or other frontends.
+| Feature | What it does |
+|---|---|
+| 📥 CSV Upload | Accepts the sample dataset or a user-provided CSV |
+| 🛡️ Data Validation | Checks schema, dates, numeric values, duplicates and ranges |
+| 📈 Trend Detection | Finds significant period-to-period changes |
+| 🎯 Outlier Detection | Supports IQR and Z-score methods |
+| 🔗 Correlation Analysis | Calculates Pearson correlations between indicators |
+| 🚨 Threshold Breaches | Detects user-defined absolute limits |
+| ⚠️ Severity Ranking | Classifies findings as Low, Medium or High |
+| 💡 Automated Insights | Converts analytical findings into explanations |
+| 🔎 Filtering | Filters insights by district, period, indicator, type and severity |
+| 📊 Interactive Charts | Uses Plotly for analytical visualization |
+| 📤 Export | Generates CSV, JSON and correlation-matrix files |
+| 🧪 Automated Tests | Includes unit and smoke tests for the analytics pipeline |
 
 ---
 
-## 5. Project structure
+# 🧠 How the System Works
 
-```text
-auto_insight/
-│
-├── app.py                         # Streamlit dashboard / presentation layer
-├── run_export.py                  # Headless analysis + export script
-├── requirements.txt               # Python dependencies
-├── pytest.ini                     # Pytest configuration
-│
-├── .streamlit/
-│   └── config.toml                # Streamlit theme/server configuration
-│
-├── data/
-│   └── district_data.csv          # Sample input dataset
-│
-├── outputs/
-│   ├── insights.csv               # Generated insights
-│   ├── insights.json              # Generated insights in JSON
-│   └── correlation_matrix.csv     # Pearson correlation matrix
-│
-├── src/
-│   ├── __init__.py
-│   ├── data_loader.py             # Safe CSV loading
-│   ├── validation.py              # Data validation + cleaning
-│   ├── trend_detection.py         # Month-to-month trend detection
-│   ├── outlier_detection.py       # IQR / Z-score detection
-│   ├── correlation.py             # Pearson correlation analysis
-│   ├── severity.py                # Severity rules
-│   ├── insight_generator.py       # Combines analyses into insights
-│   └── utils.py                   # Shared constants/helpers
-│
-└── tests/
-    ├── helpers.py
-    ├── test_app_smoke.py
-    ├── test_validation.py
-    ├── test_trend.py
-    ├── test_outlier.py
-    ├── test_correlation.py
-    ├── test_severity.py
-    └── test_insights.py
-```
+## 1. Data Loading
+
+`src/data_loader.py`
+
+The loader safely reads CSV input and converts file/read failures into controlled errors instead of allowing an uncontrolled application crash.
 
 ---
 
-## 6. Input dataset format
+## 2. Data Validation
 
-The sample dataset is:
+`src/validation.py`
 
-```text
-data/district_data.csv
-```
+Before analysis, the dataset is checked for data-quality issues.
 
 ### Required columns
+
+The current sample schema requires:
 
 ```text
 month
@@ -346,118 +117,237 @@ immunization
 high_risk_cases
 ```
 
+### Validation checks
+
+The validation layer checks:
+
+- required columns are present;
+- empty datasets;
+- missing values;
+- invalid month/date values;
+- blank district values;
+- numeric conversion;
+- negative values;
+- infinite values;
+- percentage values greater than 100;
+- exact duplicate rows;
+- duplicate `(month, district)` records;
+- minimum temporal coverage;
+- minimum district coverage for correlation stability.
+
+Invalid records are handled through the validation/cleaning pipeline and surfaced to the user as warnings or errors.
+
+---
+
+# 📈 3. Trend Detection
+
+`src/trend_detection.py`
+
+For each district and numeric indicator, the engine compares an observation with the previous available observation.
+
+### Percentage-change formula
+
+```text
+Change % = ((Current Value - Previous Value) / Previous Value) × 100
+```
+
+A trend is significant when:
+
+```text
+abs(Change %) >= Trend Threshold
+```
+
+Default:
+
+```text
+Trend Threshold = 10%
+```
+
+### Example
+
+```text
+Previous ANC Coverage = 85
+Current ANC Coverage  = 69
+
+Change = ((69 - 85) / 85) × 100
+       = -18.82%
+```
+
+Since:
+
+```text
+18.82% > 10%
+```
+
+the change is flagged as significant.
+
+The engine also handles:
+
+- first observations;
+- missing values;
+- zero previous values;
+- non-consecutive months.
+
+---
+
+# 🎯 4. Outlier Detection
+
+`src/outlier_detection.py`
+
+Two statistical methods are available.
+
+## IQR Method
+
+```text
+IQR = Q3 - Q1
+
+Lower Bound = Q1 - k × IQR
+Upper Bound = Q3 + k × IQR
+```
+
+Default:
+
+```text
+k = 1.5
+```
+
+A value outside the lower or upper bound is flagged as an outlier.
+
+## Z-score Method
+
+```text
+z = (x - mean) / standard deviation
+```
+
+A value is flagged when:
+
+```text
+abs(z) >= Z-score Threshold
+```
+
+Default:
+
+```text
+Z-score Threshold = 3.0
+```
+
+The method and thresholds are configurable from the dashboard.
+
+---
+
+# 🔗 5. Pearson Correlation
+
+`src/correlation.py`
+
+The engine calculates Pearson correlation between numeric indicators.
+
+```text
+r ∈ [-1, +1]
+```
+
+Interpretation:
+
+| Correlation | Meaning |
+|---:|---|
+| `+1` | Perfect positive linear relationship |
+| `0` | No linear relationship |
+| `-1` | Perfect negative linear relationship |
+
+A relationship is considered strong when:
+
+```text
+abs(r) >= Correlation Threshold
+```
+
+Default:
+
+```text
+Correlation Threshold = 0.70
+```
+
+The system reports each indicator pair only once.
+
+### Important statistical limitation
+
+A strong correlation **does not imply causation**.
+
+The application therefore presents correlation as an association, not proof that one indicator causes another.
+
+It also warns when the number of districts is too small for reliable correlation interpretation.
+
+---
+
+# 🚨 6. Threshold-Breach Detection
+
+In addition to statistical detection, the application supports user-defined absolute thresholds.
+
+Examples:
+
+### Percentage indicator
+
+```text
+ANC Coverage < configured minimum
+```
+
+### Count indicator
+
+```text
+High Risk Cases >= configured maximum
+```
+
+This is intentionally separate from:
+
+- trends;
+- outliers;
+- correlations.
+
+A value can therefore be normal statistically but still violate an operational threshold.
+
+---
+
+# ⚠️ 7. Severity Classification
+
+`src/severity.py`
+
+Every finding receives one of:
+
+```text
+LOW
+MEDIUM
+HIGH
+```
+
+Severity is **relative to the configured detection threshold** rather than being based on one arbitrary fixed number for every analysis type.
+
 Conceptually:
 
-| Column | Meaning | Typical type |
-|---|---|---|
-| `month` | Observation month | Date / `YYYY-MM` |
-| `district` | District/entity name | String |
-| `anc_coverage` | ANC coverage | Percentage |
-| `institutional_delivery` | Institutional delivery coverage | Percentage |
-| `immunization` | Immunization coverage | Percentage |
-| `high_risk_cases` | High-risk cases | Count |
-
-The engine can also analyze **additional numeric columns** automatically. Non-numeric extra columns are ignored by the analysis layer.
-
-### Data assumptions
-
-The intended grain is:
-
 ```text
-one row = one district + one month
+Observed Magnitude
+        ÷
+Detection Threshold
+        =
+Severity Ratio
 ```
 
-The validation layer normalizes date values to monthly periods such as:
+Default ratio behavior:
 
 ```text
-2026-07
-2026-08
+Low      < 1.20 × threshold
+Medium   >= 1.20 × threshold
+High     >= 1.50 × threshold
 ```
+
+The dashboard allows severity cut-offs to be configured.
 
 ---
 
-## 7. Data processing pipeline
+# 💡 8. Automated Insight Generation
 
-### Step 1 — Read CSV
+`src/insight_generator.py`
 
-`src/data_loader.py` safely reads the input file.
+The insight generator combines the outputs of the analytical modules into standardized insight records.
 
-Read errors are converted into a validation report instead of allowing the UI to crash.
-
-### Step 2 — Normalize column names
-
-Column names are stripped and converted to lowercase.
-
-### Step 3 — Validate schema
-
-Required columns are checked before analysis begins.
-
-### Step 4 — Validate dates and districts
-
-Invalid/missing months and blank districts are removed with warnings.
-
-### Step 5 — Convert numeric indicators
-
-Required indicator columns are converted to numeric values where possible.
-
-Non-numeric values are treated as missing and reported.
-
-### Step 6 — Validate numeric ranges
-
-Negative and infinite values are invalid.
-
-For percentage-style indicators, values above 100 are also invalid.
-
-### Step 7 — Remove duplicates
-
-The engine checks:
-
-1. exact duplicate rows;
-2. duplicate `(district, month)` keys.
-
-### Step 8 — Check coverage
-
-The engine warns when there are:
-
-- fewer than 3 months available for a district;
-- fewer than 10 districts for correlation stability.
-
-These are warnings rather than universal blocking conditions.
-
-### Step 9 — Run analytics
-
-The cleaned dataset is passed to the trend, outlier, correlation, and optional breach detectors.
-
-### Step 10 — Generate insights
-
-Findings are converted into standardized insight records and sorted by severity/type.
-
----
-
-## 8. Insight generation model
-
-The central orchestration function is:
-
-```python
-from src.insight_generator import generate_insights
-
-result = generate_insights(df)
-```
-
-It returns an `AnalysisResult` containing:
-
-```text
-insights
-corr_matrix
-corr_pairs
-trends
-outliers
-breaches
-indicators
-count_indicators
-```
-
-The `insights` DataFrame uses this schema:
+Each insight contains:
 
 ```text
 insight_id
@@ -472,7 +362,7 @@ severity
 explanation
 ```
 
-### Insight types
+### Supported insight types
 
 ```text
 trend
@@ -481,514 +371,655 @@ correlation
 threshold_breach
 ```
 
-Insight IDs are generated dynamically:
+### Example
 
 ```text
 INS-0001
-INS-0002
-INS-0003
-...
+
+Type: Trend
+Severity: HIGH
+
+Indicator: ANC Coverage
+District: Ahmedabad
+Period: Aug 2026
+
+Previous Value: 85
+Current Value: 69
+Change: -18.82%
+
+Explanation:
+ANC Coverage in Ahmedabad decreased significantly compared
+with the previous period and exceeded the configured
+10% change threshold.
+```
+
+The goal is not simply to return a statistical number; it is to produce a finding that a non-technical user can understand.
+
+---
+
+# 🏗️ Architecture
+
+The project follows a **separation-of-concerns architecture**.
+
+```text
+                         app.py
+                   Streamlit Presentation
+                            │
+                            ▼
+                    data_loader.py
+                       CSV Loading
+                            │
+                            ▼
+                     validation.py
+                    Validation/Cleaning
+                            │
+                            ▼
+                 insight_generator.py
+                    Analysis Orchestrator
+                            │
+          ┌─────────────────┼─────────────────┐
+          ▼                 ▼                 ▼
+    trend_detection   outlier_detection   correlation
+          │                 │                 │
+          └─────────────────┼─────────────────┘
+                            ▼
+                       severity.py
+                            │
+                            ▼
+                       Insight Records
+                            │
+                 ┌──────────┴──────────┐
+                 ▼                     ▼
+          Streamlit Dashboard       Exports
+```
+
+### Design principle
+
+The analytical engine is kept separate from Streamlit.
+
+That means the same analysis logic can be used by:
+
+- the dashboard;
+- `run_export.py`;
+- automated tests;
+- a future REST API;
+- another frontend.
+
+---
+
+# 📂 Project Structure
+
+```text
+auto_insight/
+│
+├── app.py
+│   └── Streamlit dashboard and user interaction
+│
+├── run_export.py
+│   └── Headless analysis + file export
+│
+├── requirements.txt
+│   └── Python dependencies
+│
+├── pytest.ini
+│   └── Pytest configuration
+│
+├── .streamlit/
+│   └── config.toml
+│
+├── data/
+│   └── district_data.csv
+│       └── Sample healthcare dataset
+│
+├── outputs/
+│   ├── insights.csv
+│   ├── insights.json
+│   └── correlation_matrix.csv
+│
+├── src/
+│   ├── __init__.py
+│   ├── data_loader.py
+│   ├── validation.py
+│   ├── trend_detection.py
+│   ├── outlier_detection.py
+│   ├── correlation.py
+│   ├── severity.py
+│   ├── insight_generator.py
+│   └── utils.py
+│
+└── tests/
+    ├── helpers.py
+    ├── test_app_smoke.py
+    ├── test_validation.py
+    ├── test_trend.py
+    ├── test_outlier.py
+    ├── test_correlation.py
+    ├── test_severity.py
+    └── test_insights.py
 ```
 
 ---
 
-## 9. Severity logic
+# 📊 Dataset
 
-Severity is threshold-relative.
-
-For ratio-based findings, conceptually:
+The included sample dataset is:
 
 ```text
-ratio = observed magnitude / configured threshold
+data/district_data.csv
 ```
 
-Default ratio cut-offs:
+Current columns:
+
+| Column | Description | Type |
+|---|---|---|
+| `month` | Observation month | Period/Date |
+| `district` | District name | Categorical |
+| `anc_coverage` | ANC coverage percentage | Numeric |
+| `institutional_delivery` | Institutional delivery percentage | Numeric |
+| `immunization` | Immunization percentage | Numeric |
+| `high_risk_cases` | High-risk case count | Numeric |
+
+### Data grain
+
+The intended observation grain is:
 
 ```text
-Low      < 1.20
-Medium   >= 1.20
-High     >= 1.50
+1 row = 1 district + 1 month
 ```
 
-For correlation, severity uses threshold headroom so the classification scales with the selected correlation threshold.
-
-The exact implementation is centralized in:
+Example:
 
 ```text
-src/severity.py
+2026-07 | Ahmedabad | 85 | 91 | 93 | 10
+2026-08 | Ahmedabad | 69 | 90 | 92 | 13
 ```
 
-This prevents severity rules from being duplicated across trend/outlier/correlation logic.
+The architecture also supports additional numeric indicator columns through the indicator-discovery utilities.
 
 ---
 
-## 10. Streamlit dashboard
+# 🔄 End-to-End Processing
 
-Run the dashboard with:
-
-```bash
-python -m streamlit run app.py
+```text
+1. User uploads/selects CSV
+             ↓
+2. CSV is loaded safely
+             ↓
+3. Column names are normalized
+             ↓
+4. Required schema is validated
+             ↓
+5. Dates and numeric fields are cleaned
+             ↓
+6. Duplicate/invalid records are checked
+             ↓
+7. Clean dataset is produced
+             ↓
+8. Trend analysis runs
+             ↓
+9. Outlier analysis runs
+             ↓
+10. Correlation analysis runs
+             ↓
+11. Optional threshold checks run
+             ↓
+12. Findings receive severity
+             ↓
+13. Explanations are generated
+             ↓
+14. Results are filtered/displayed
+             ↓
+15. Results can be exported
 ```
 
-The dashboard provides:
+---
 
-### Control Panel
+# 🖥️ Dashboard
 
-- Sample dataset / uploaded CSV
-- Trend threshold
-- IQR / Z-score selection
-- IQR multiplier
-- Z-score threshold
-- Correlation threshold
-- Severity cut-offs
-- Optional threshold breach settings
-- District filter
-- Month filter
-- Indicator filter
-- Severity filter
-- Insight-type filter
+The Streamlit interface is organized around the complete analytical workflow.
 
-### Executive summary
+## Executive Summary
 
-Displays:
+Provides a quick view of:
 
 - total insights;
-- high-severity findings;
-- medium-severity findings;
-- low-severity findings;
-- selected districts;
+- high/medium/low severity;
 - detected trends;
 - detected outliers;
-- strong correlations.
+- strong correlations;
+- dataset health.
 
-### Insights tab
+## Insights
 
 Provides:
 
+- insight distribution;
 - severity distribution;
-- insight-type distribution;
-- per-district indicator line chart;
 - detailed insight cards;
-- severity explanation.
+- district/indicator/month information;
+- explanations;
+- filtering.
 
-### Trends tab
+## Trends
 
-Shows trend findings and the configured significant-change threshold.
+Displays significant changes and their thresholds using interactive charts.
 
-### Outliers tab
+## Outliers
 
-Shows detected anomalies and the selected IQR/Z-score method.
+Displays detected anomalies and the selected statistical method.
 
-### Correlation tab
+## Correlation
 
-Shows:
+Displays:
 
-- Pearson correlation matrix;
+- correlation matrix;
 - strong correlation pairs;
 - sample-size warnings;
-- causation warning.
+- interpretation warning about causation.
 
-### Data & Validation tab
+## Data & Validation
 
-Shows:
+Displays:
 
 - dataset information;
-- validation checks;
-- missing-value information;
-- cleaned data preview.
+- validation status;
+- data-quality issues;
+- cleaned/processed data preview.
 
 ---
 
-## 11. Filtering vs analysis
+# ⚙️ Configuration
 
-A key design decision is that **sidebar filters primarily control what is displayed**, while the analytics are computed from the cleaned dataset.
+The dashboard exposes the main analytical parameters.
 
-In other words:
+| Parameter | Default | Purpose |
+|---|---:|---|
+| Trend threshold | `10%` | Minimum percentage change for a trend |
+| IQR multiplier | `1.5` | Outlier fence multiplier |
+| Z-score threshold | `3.0` | Z-score outlier cutoff |
+| Correlation threshold | `0.70` | Minimum absolute Pearson correlation |
+| Severity thresholds | Configurable | Low/Medium/High classification |
+| Breach thresholds | Configurable | Operational threshold detection |
 
-```text
-Uploaded data
-    ↓
-Validation
-    ↓
-Analysis
-    ↓
-Generated insights
-    ↓
-UI filters
-    ↓
-Displayed subset
-```
-
-This avoids silently changing statistical calculations merely because a user changed a display filter.
+This makes the engine reusable for different datasets without changing the core source code.
 
 ---
 
-## 12. Exports
+# 🚀 Installation
 
-The application provides three downloads from the sidebar.
-
-### Insights CSV
-
-```text
-outputs/insights.csv
-```
-
-Contains the standardized insight schema.
-
-### Insights JSON
-
-```text
-outputs/insights.json
-```
-
-Contains the same insight records in JSON format.
-
-### Correlation matrix
-
-```text
-outputs/correlation_matrix.csv
-```
-
-Contains the complete Pearson correlation matrix.
-
----
-
-## 13. Headless execution
-
-The project can also run without Streamlit using:
+## 1. Clone the repository
 
 ```bash
-python run_export.py
+git clone <YOUR_GITHUB_REPOSITORY_URL>
+cd auto_insight
 ```
 
-This script:
-
-1. loads `data/district_data.csv`;
-2. validates the dataset;
-3. prints the validation report;
-4. generates insights;
-5. writes the three output files under `outputs/`.
-
-This is useful for batch execution, testing, demonstrations, and future automation.
-
----
-
-## 14. Installation
-
-### Prerequisites
-
-- Python 3.x
-- pip
-- virtual environment recommended
+## 2. Create a virtual environment
 
 ### Windows
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
+.venv\Scripts\activate
 ```
 
-### macOS / Linux
+### macOS/Linux
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
 ```
 
-### Dependencies
+## 3. Install dependencies
 
-```text
-pandas
-numpy
-streamlit>=1.50
-plotly
-pytest
+```bash
+pip install -r requirements.txt
 ```
 
 ---
 
-## 15. Run the project
+# ▶️ Run the Dashboard
 
-### Start the dashboard
+From the `auto_insight` directory:
 
 ```bash
 python -m streamlit run app.py
 ```
 
-Then open the local Streamlit URL shown in the terminal, normally:
+Streamlit will provide a local URL, normally:
 
 ```text
 http://localhost:8501
 ```
 
-### Generate exports without the dashboard
+---
+
+# 📤 Run Headless Export
+
+For analysis without opening the dashboard:
 
 ```bash
 python run_export.py
 ```
 
-### Run tests
+Generated files are written to:
+
+```text
+outputs/
+├── insights.csv
+├── insights.json
+└── correlation_matrix.csv
+```
+
+This is useful for:
+
+- automated workflows;
+- batch analysis;
+- CI/testing;
+- downstream reporting.
+
+---
+
+# 🧪 Testing
+
+The project contains tests covering the major analytical components.
+
+Run:
 
 ```bash
 python -m pytest -q
 ```
 
----
-
-## 16. Testing
-
-The project contains **46 automated tests** covering the main analytics and validation behavior.
-
-Test areas include:
-
-| Test module | Purpose |
-|---|---|
-| `test_validation.py` | Schema, missing values, invalid values, duplicates, dates, coverage |
-| `test_trend.py` | Percentage-change formula, thresholds, missing/zero previous values, month gaps |
-| `test_outlier.py` | IQR, Z-score, missing values, small samples, explanations |
-| `test_correlation.py` | Pearson correlation, unique pairs, thresholds, sign, sample warnings |
-| `test_severity.py` | Severity ratios, configurable cut-offs, correlation headroom |
-| `test_insights.py` | End-to-end insight generation, dynamic values, exports, threshold breaches |
-| `test_app_smoke.py` | Streamlit dashboard startup, filters, displayed values |
-
-### Important
-
-Run tests after installing dependencies from `requirements.txt`.
-
----
-
-## 17. Configuration
-
-The Streamlit theme is configured in:
+The test suite includes:
 
 ```text
-.streamlit/config.toml
+test_validation.py
+test_trend.py
+test_outlier.py
+test_correlation.py
+test_severity.py
+test_insights.py
+test_app_smoke.py
 ```
 
-Current configuration uses a light dashboard theme with an indigo primary color and wide layout.
+### Test philosophy
 
-Analysis parameters are configured at runtime through `AnalysisConfig`:
+Tests verify both:
 
-```python
-AnalysisConfig(
-    trend_threshold=10.0,
-    outlier_method="IQR",
-    iqr_k=1.5,
-    z_threshold=3.0,
-    corr_threshold=0.70,
-    enable_breach=True,
-    breach_floor=70.0,
-    breach_ceiling=20.0,
-)
+1. **normal analytical behavior**
+2. **edge cases**
+
+Examples include:
+
+- missing required columns;
+- invalid values;
+- duplicate records;
+- zero previous values;
+- no previous observation;
+- outlier boundaries;
+- constant-value correlation;
+- correlation pair uniqueness;
+- severity boundaries;
+- generated insight schema.
+
+---
+
+# 📦 Dependencies
+
+The project intentionally uses a lightweight Python stack:
+
+```text
+pandas
+numpy
+streamlit
+plotly
+pytest
 ```
 
----
+### Why these libraries?
 
-## 18. Important statistical limitations
+| Library | Purpose |
+|---|---|
+| Pandas | DataFrames, cleaning and analytical transformations |
+| NumPy | Numerical/statistical operations |
+| Streamlit | Interactive dashboard |
+| Plotly | Interactive charts |
+| Pytest | Automated testing |
 
-### Small datasets
-
-The sample data contains only a small number of district/month observations. Correlations calculated from very small samples can be unstable.
-
-The application therefore reports a warning when fewer than **10 districts** or **3 months** are available according to the project recommendations.
-
-### Trend limitations
-
-With only two months, a trend represents only one month-to-month comparison.
-
-### Z-score limitations
-
-For very small samples, Z-score behavior is constrained by sample size. IQR is generally the safer default for small datasets.
-
-### Missing values
-
-A trend cannot be computed when either the current or previous observation is missing, and percentage change is undefined when the previous value is zero.
-
-### Correlation is not causation
-
-A high Pearson correlation indicates linear association, not a causal relationship.
-
-### No causal or predictive modeling
-
-This project is an **automated descriptive analytics and insight-generation engine**. It does not claim to perform causal inference, forecasting, or clinical diagnosis.
+No heavy ML framework is required because this project focuses on **statistical analytics and automated insight generation**, rather than predictive model training.
 
 ---
 
-## 19. Design principles
+# 🔬 Statistical Methodology
 
-### Data-driven
+## Trend
 
-No district, indicator, insight count, or observed numeric result is hardcoded into the analytics logic.
+```text
+Δ% = ((current - previous) / previous) × 100
+```
 
-### Explainable
+Used to identify significant temporal changes.
 
-Every finding has a human-readable explanation that exposes the underlying comparison or statistical evidence.
+## IQR
 
-### Configurable
+```text
+IQR = Q3 - Q1
 
-Thresholds can be adjusted without modifying the core algorithms.
+Lower = Q1 - 1.5 × IQR
+Upper = Q3 + 1.5 × IQR
+```
 
-### Modular
+Used for robust outlier detection.
 
-Each analytical task is isolated into its own module.
+## Z-score
 
-### Safe
+```text
+z = (x - μ) / σ
+```
 
-Bad files and malformed records are reported through validation instead of causing uncontrolled failures.
+Used to identify observations far from the mean.
 
-### Testable
+## Pearson correlation
 
-The analytics layer is independent from Streamlit, making it straightforward to test independently.
+```text
+r = Cov(X,Y) / (σX × σY)
+```
 
----
-
-## 20. How the modules work together
-
-### `data_loader.py`
-
-Responsible for safely reading CSV files and returning a `ValidationReport`.
-
-### `validation.py`
-
-Responsible for schema validation, cleaning, type conversion, range checks, duplicates, and coverage warnings.
-
-### `trend_detection.py`
-
-Responsible only for calculating month-to-month percentage changes and identifying significant changes.
-
-### `outlier_detection.py`
-
-Responsible for IQR and Z-score anomaly detection.
-
-### `correlation.py`
-
-Responsible for Pearson correlation matrices, unique strong-correlation pairs, and sample-size warnings.
-
-### `severity.py`
-
-Responsible for converting statistical magnitude into Low/Medium/High severity.
-
-### `insight_generator.py`
-
-The orchestration layer. It calls the individual detectors, converts findings into standardized insight records, and generates explanations.
-
-### `utils.py`
-
-Contains shared constants, indicator detection, formatting helpers, and month utilities.
-
-### `app.py`
-
-Presentation layer only: controls, filters, charts, insight cards, validation display, and exports.
-
-### `run_export.py`
-
-Headless entry point for regenerating output files without starting Streamlit.
+Used to measure linear association between indicators.
 
 ---
 
-## 21. Example end-to-end usage
+# ⚠️ Important Limitations
 
-1. Start the dashboard.
-2. Select **Sample dataset** or upload a CSV.
-3. The application validates the data automatically.
-4. Review warnings in **Data & Validation**.
-5. Configure detection thresholds in the sidebar.
-6. Review the executive summary.
-7. Inspect individual findings under **Insights**.
-8. Investigate trends and outliers.
-9. Review the Pearson correlation matrix.
-10. Apply filters to focus on specific districts/indicators.
-11. Export the filtered insights as CSV/JSON.
+AutoInsight is an **analytics and decision-support system**, not a causal inference or medical decision-making system.
+
+### Correlation
+
+A strong correlation does not establish causation.
+
+### Small samples
+
+Correlation and statistical summaries can be unstable with small sample sizes.
+
+### Missing data
+
+Removing invalid observations can change the resulting analysis.
+
+### Thresholds
+
+Thresholds are configuration choices and should be selected according to the domain/business context.
+
+### Outliers
+
+An outlier is not automatically an error. It may represent:
+
+- a genuine event;
+- a measurement problem;
+- a data-entry issue;
+- an unusual but valid observation.
+
+The system flags observations for investigation rather than automatically declaring them incorrect.
 
 ---
 
-## 22. Interview-ready explanation
+# 🎯 Why This Architecture?
 
-### What does this project do?
+A major design goal is to keep **data processing, analytics, insight generation, and presentation separate**.
 
-> AutoInsight is a Python-based automated analytics engine that takes district-level healthcare data, validates and cleans it, detects significant trends, statistical outliers, and strong correlations, assigns severity levels, and converts the findings into explainable insights. I built the analytics as modular Python components and used Streamlit for the interactive dashboard and exports.
+Instead of placing everything inside the Streamlit UI:
 
-### Why did you separate `src/` from `app.py`?
+```text
+Bad pattern:
+app.py
+ ├── load data
+ ├── validate data
+ ├── calculate trends
+ ├── calculate outliers
+ ├── calculate correlation
+ ├── generate text
+ └── render UI
+```
 
-> I separated the business logic from the presentation layer so the analytics engine is independent of Streamlit. This makes the algorithms reusable, testable, and easier to integrate later with an API or another frontend.
+the project uses:
 
-### How do you detect trends?
+```text
+app.py
+   │
+   └── calls reusable analysis modules
 
-> For each district and indicator, I calculate percentage change from the previous observed period. If the absolute percentage change is greater than or equal to the configured threshold, I generate a trend insight.
+src/
+   ├── validation.py
+   ├── trend_detection.py
+   ├── outlier_detection.py
+   ├── correlation.py
+   ├── severity.py
+   └── insight_generator.py
+```
 
-### How do you detect outliers?
+This improves:
 
-> I support both IQR and Z-score methods. IQR flags observations outside Q1 minus k times IQR and Q3 plus k times IQR, while Z-score flags observations whose absolute standardized score exceeds the configured threshold.
+- testability;
+- maintainability;
+- reusability;
+- debugging;
+- future API integration;
+- separation of responsibilities.
 
-### How do you handle correlation?
+---
 
-> I calculate a Pearson correlation matrix for numeric indicators and report each unordered pair once when its absolute correlation exceeds the configured threshold. I also explicitly warn that correlation does not imply causation and flag small-sample situations.
+# 🔮 Future Improvements
+
+Potential next steps:
+
+- [ ] REST API using FastAPI
+- [ ] Database persistence
+- [ ] Authentication and user roles
+- [ ] Historical insight tracking
+- [ ] Scheduled automated reports
+- [ ] Email/SMS alerting
+- [ ] More robust time-series methods
+- [ ] Confidence intervals
+- [ ] Statistical significance testing
+- [ ] Forecasting
+- [ ] ML-based anomaly detection
+- [ ] Role-specific dashboards
+- [ ] PDF report generation
+- [ ] Cloud deployment
+- [ ] CI/CD pipeline
+- [ ] Docker support
+
+---
+
+# 🧑‍💻 Developer / Interview Explanation
+
+### One-line explanation
+
+> **AutoInsight is a configurable analytics engine that validates district-level healthcare data, detects trends, outliers and correlations, ranks findings by severity, and converts them into explainable insights through a Streamlit dashboard.**
+
+### Explain the architecture
+
+> I separated the project into a presentation layer and an analytics layer. Streamlit handles the UI, while the `src` modules independently handle validation, trend detection, outlier detection, correlation, severity and insight generation. This makes the core engine reusable and testable without depending on Streamlit.
+
+### Why not machine learning?
+
+> The problem is primarily descriptive and diagnostic analytics rather than prediction. Statistical techniques such as percentage-change analysis, IQR, Z-score and Pearson correlation are more interpretable and appropriate for automatically identifying current patterns and anomalies.
+
+### How do you handle bad data?
+
+> The validation layer checks schema, missing values, invalid dates, numeric conversion, negative/infinite values, duplicates and invalid ranges before analysis. The system reports issues and produces a cleaned dataset instead of allowing invalid data to silently propagate.
 
 ### How are insights generated?
 
-> The individual detectors return structured results. The insight generator converts those results into a common schema containing the type, entity, period, value, severity, and a data-driven explanation. This makes the output consistent and exportable.
-
-### How do you avoid hardcoding results?
-
-> District names, indicator names, values, periods, and insight counts come directly from the validated dataset. The tests also verify that district-specific hardcoding is not present in the source.
+> Individual analytical modules produce structured findings. The insight generator combines those findings, assigns severity based on configurable thresholds, attaches the relevant values and metadata, and generates a human-readable explanation.
 
 ---
 
-## 23. Future improvements
+# 📁 Output Files
 
-Possible extensions include:
+After running the export workflow:
 
-- REST API using FastAPI;
-- database persistence;
-- role-based access control;
-- scheduled/batch analysis;
-- richer anomaly detection methods;
-- time-series forecasting;
-- confidence intervals and statistical significance tests;
-- configurable domain-specific validation rules;
-- dashboard authentication;
-- cloud deployment;
-- alerting through email/SMS/webhooks;
-- experiment tracking and model monitoring if predictive ML is added.
+### `outputs/insights.csv`
 
-These are future extensions and are **not required for the current descriptive analytics engine**.
+Tabular version of generated insights.
+
+### `outputs/insights.json`
+
+Machine-readable version of generated insights.
+
+### `outputs/correlation_matrix.csv`
+
+Pearson correlation matrix between numeric indicators.
 
 ---
 
-## 24. Project status
+# 🔐 Data & Privacy
 
-**Current scope:** Automated descriptive analytics + explainable insight generation.
+The repository is designed around local CSV processing.
 
-**Core analysis:** Validation, trends, outliers, Pearson correlation, severity classification, optional threshold breaches.
+No external database or cloud analytics service is required for the core workflow.
 
-**Interface:** Streamlit dashboard.
-
-**Exports:** CSV, JSON, correlation matrix CSV.
-
-**Testing:** 46 automated tests covering validation, analytics, insight generation, exports, and dashboard smoke behavior.
+For real healthcare datasets, sensitive or personally identifiable information should **not** be committed to GitHub. Use anonymized/sample data and appropriate access controls.
 
 ---
 
-## 25. Quick command reference
+# 📜 Project Status
 
-```bash
-# Install
-pip install -r requirements.txt
+**Status:** Functional analytics application with interactive Streamlit dashboard, automated insight generation, exports and automated tests.
 
-# Run dashboard
-python -m streamlit run app.py
+The project is designed to be extended rather than rewritten: new analytical modules can be added to the engine while the existing dashboard and export workflows remain reusable.
 
-# Generate exports
-python run_export.py
+---
 
-# Run tests
-python -m pytest -q
+## ⭐ Summary
+
+```text
+AutoInsight
+│
+├── Validate data
+│
+├── Clean data
+│
+├── Detect significant trends
+│
+├── Detect statistical outliers
+│
+├── Calculate correlations
+│
+├── Detect configurable threshold breaches
+│
+├── Rank findings by severity
+│
+├── Generate human-readable explanations
+│
+├── Visualize results
+│
+└── Export actionable insights
 ```
 
----
+**AutoInsight turns raw tabular data into structured, explainable analytical findings.**
+"""
 
-## License
-
-Add the appropriate license before public distribution if required by the project or organization.
+path = Path("/mnt/data/README_AutoInsight_Professional.md")
+path.write_text(readme, encoding="utf-8")
+print(f"Created: {path}")
+print(f"Size: {path.stat().st_size:,} bytes")
