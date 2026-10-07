@@ -1,5 +1,3 @@
-from pathlib import Path
-
 AutoInsight — Automated Insight Generation
 
 > **A configurable Python + Streamlit analytics engine that transforms district-level healthcare data into validated, explainable, severity-ranked insights.**
@@ -15,7 +13,6 @@ AutoInsight — Automated Insight Generation
 ## 📌 What is AutoInsight?
 
 **AutoInsight** is an automated data-analysis and insight-generation application.
-
 It accepts a CSV containing monthly district-level indicators, validates the data, performs multiple analytical checks, and converts the findings into human-readable insights.
 
 Instead of manually inspecting rows and charts, a user can upload a dataset and immediately answer questions such as:
