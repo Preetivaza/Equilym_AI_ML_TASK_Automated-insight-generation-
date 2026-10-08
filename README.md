@@ -1012,11 +1012,3 @@ AutoInsight
 │
 └── Export actionable insights
 ```
-
-**AutoInsight turns raw tabular data into structured, explainable analytical findings.**
-"""
-
-path = Path("/mnt/data/README_AutoInsight_Professional.md")
-path.write_text(readme, encoding="utf-8")
-print(f"Created: {path}")
-print(f"Size: {path.stat().st_size:,} bytes")
